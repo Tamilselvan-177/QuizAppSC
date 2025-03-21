@@ -1,6 +1,6 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.contrib.auth import login, authenticate
+from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.models import User
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -10,54 +10,32 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
-from .forms import CustomUserCreationForm
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import logout
+from django.http import JsonResponse
+from .forms import CustomUserCreationForm, ForgotPasswordForm, ResetPasswordForms
+from .models import Topic, QuizAttempt, Leaderboard, Question, UserResponse, Quiz
+
 def signup(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.is_active = False  # Deactivate account until it is verified
+            user.is_active = False
             user.save()
-            
-            # Generate correct UID and token
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
-
-            print(f"UID: {uid}, Token: {token}")  # Debugging output
-
-            # Ensure correct URL pattern
-            try:
-                verification_link = reverse('activate', kwargs={'uidb64': uid, 'token': token})
-                activation_url = f"http://{get_current_site(request).domain}{verification_link}"
-            except Exception as e:
-                print(f"Reverse URL Error: {e}")
-
-            # Send email
-            message = render_to_string('email_verification.html', {
-                'user': user,
-                'activation_url': activation_url,
-            })
-            send_mail(
-                subject='Activate your account',
-                message=message,
-                from_email=settings.EMAIL_HOST_USER,
-                recipient_list=[user.email],
-                fail_silently=False,
-            )
-            
-            messages.success(request, "Signup successful! Please check your email to verify your account.")
+            verification_link = reverse('activate', kwargs={'uidb64': uid, 'token': token})
+            activation_url = f"http://{get_current_site(request).domain}{verification_link}"
+            message = render_to_string('email_verification.html', {'user': user, 'activation_url': activation_url})
+            send_mail('Activate your account', message, settings.EMAIL_HOST_USER, [user.email], fail_silently=False)
+            messages.success(request, "Signup successful! Check your email to verify your account.")
             return redirect('signin')
-        else:
-            for errors in form.errors.values():
-                for error in errors:
-                    messages.error(request, error)
+        for errors in form.errors.values():
+            for error in errors:
+                messages.error(request, error)
     else:
         form = CustomUserCreationForm()
-    
     return render(request, 'signup.html', {'form': form})
-
 
 def activate(request, uidb64, token):
     try:
@@ -65,64 +43,40 @@ def activate(request, uidb64, token):
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
-    
-    if user is not None and default_token_generator.check_token(user, token):
+    if user and default_token_generator.check_token(user, token):
         user.is_active = True
         user.save()
         messages.success(request, "Your account has been verified! You can now log in.")
         return redirect('signin')
-    else:
-        messages.error(request, "Activation link is invalid or has expired.")
-        return redirect('signup')
+    messages.error(request, "Activation link is invalid or has expired.")
+    return redirect('signup')
 
 def signin(request):
     if request.method == 'POST':
         username_or_email = request.POST.get('email')
         password = request.POST.get('password')
-        
-        # Check if the input is a valid username or email
         try:
             user = User.objects.get(email=username_or_email)
             username = user.username
         except User.DoesNotExist:
             username = username_or_email
-        
-        # Authenticate user
         user = authenticate(request, username=username, password=password)
-        
-        if user is not None:
+        if user:
             if user.is_active:
                 login(request, user)
-                messages.success(request, "You have successfully logged in.")  
+                messages.success(request, "You have successfully logged in.")
                 return redirect('dashboard')
-            else:
-                messages.error(request, "Your account is not verified. Please check your email for the activation link.")
+            messages.error(request, "Your account is not verified. Check your email.")
         else:
             messages.error(request, "Invalid username or email, and/or password.")
-    
     return render(request, 'signin.html')
 
-@login_required(login_url='signin')
-def dashboard(request):
-    return render(request, 'dashboard.html')
 def logout_view(request):
     logout(request)
     messages.success(request, "You have successfully logged out.")
     return redirect('signin')
 
-
-from django.shortcuts import render, redirect
-from django.contrib.auth.models import User
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.contrib import messages
-from .forms import ForgotPasswordForm, ResetPasswordForms
-
 def forgot_password(request):
-    """Handles forgot password functionality."""
     form = ForgotPasswordForm()
     if request.method == "POST":
         form = ForgotPasswordForm(request.POST)
@@ -132,48 +86,100 @@ def forgot_password(request):
                 user = User.objects.get(email=email)
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                domain = request.get_host()
-
-                # Email content
-                subject = "Reset Your Password"
-                message = render_to_string('reset_password_email.html', {
-                    'domain': domain,
-                    'token': token,
-                    'uid': uid,
-                })
-
-                send_mail(subject, message, 'noreply@example.com', [email])
-                return render(request, "reset_password_sent.html")  # Redirect to confirmation page
-
+                message = render_to_string('reset_password_email.html', {'domain': request.get_host(), 'token': token, 'uid': uid})
+                send_mail("Reset Your Password", message, 'noreply@example.com', [email])
+                return render(request, "reset_password_sent.html")
             except User.DoesNotExist:
                 messages.error(request, 'No user found with this email address.')
-
     return render(request, "forgot_password.html", {"form": form})
 
-
 def reset_password(request, uidb64, token):
-    """Handles password reset functionality."""
     try:
-        uid = urlsafe_base64_decode(uidb64).decode()
+        uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
-
-    if user is not None and default_token_generator.check_token(user, token):
+    if user and default_token_generator.check_token(user, token):
         if request.method == "POST":
             form = ResetPasswordForms(request.POST)
             if form.is_valid():
-                new_password = form.cleaned_data['new_password']
-                user.set_password(new_password)
+                user.set_password(form.cleaned_data['new_password'])
                 user.save()
                 messages.success(request, "Your password has been reset successfully.")
                 return redirect('signin')
-            else:
-                messages.error(request, "Invalid form submission.")
+            messages.error(request, "Invalid form submission.")
         else:
             form = ResetPasswordForms()
     else:
         messages.error(request, "The password reset link is invalid or expired.")
         return redirect('forgot_password')
-
     return render(request, 'reset_password.html', {"form": form})
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from .models import Quiz, Leaderboard, Topic, Question
+
+@login_required
+def dashboard(request):
+    quizzes = Quiz.objects.all()
+    return render(request, 'dashboard.html', {'quizzes': quizzes})
+
+@login_required
+def leaderboard(request):
+    leaderboard = Leaderboard.objects.select_related('user').order_by('-total_score', '-highest_score')
+    return render(request, 'leaderboard.html', {'leaderboard': leaderboard})
+
+@login_required
+def submit_quiz(request, topic_id):
+    if request.method == 'POST':
+        user = request.user
+        topic = get_object_or_404(Topic, pk=topic_id)
+        user_answers = {}
+        
+        # Extract user answers based on question IDs
+        for key, value in request.POST.items():
+            if key.startswith("answer_"):
+                question_id = key.split('_')[1]  # Extract question ID
+                user_answers[question_id] = value
+        
+        score, total_questions = calculate_user_score(topic, user, user_answers)
+        
+        leaderboard_entry, _ = Leaderboard.objects.get_or_create(user=user)
+        leaderboard_entry.total_score += score
+        leaderboard_entry.highest_score = max(leaderboard_entry.highest_score, score)
+        leaderboard_entry.total_attempted_questions += total_questions
+        leaderboard_entry.save()
+        
+        return JsonResponse({'message': 'Quiz submitted!', 'score': score, 'total_questions': total_questions, 'total_score': leaderboard_entry.total_score, 'redirect_url': '/quiz-results/'})
+    
+    return JsonResponse({'message': 'Invalid request!'}, status=400)
+
+
+def quiz_view(request, quiz_id):
+    quiz = get_object_or_404(Quiz, pk=quiz_id)
+    topics = Question.objects.filter(topic=quiz.topic).values_list('topic', flat=True).distinct()
+    
+    questions_data = [
+        {
+            'id': q.question_id,  # Include question ID
+            'question_text': q.question_text,
+            'options': [q.option_a, q.option_b, q.option_c, q.option_d],
+            'correct_answer': q.correct_answer
+        }
+        for t in topics for q in Question.objects.filter(topic=t).order_by('?')[:10]
+    ]
+    
+    return render(request, 'quiz.html', {'quiz': quiz, 'questions': questions_data})
+
+
+def calculate_user_score(topic, user, user_answers):
+    total_score = 0
+    questions = Question.objects.filter(topic=topic)
+    total_questions = questions.count()
+    
+    for question in questions:
+        question_id = str(question.question_id)  # Convert to string for comparison
+        if user_answers.get(question_id) == question.correct_answer:
+            total_score += 1
+        print(user_answers.get(question_id), question.correct_answer)
+    return total_score, total_questions

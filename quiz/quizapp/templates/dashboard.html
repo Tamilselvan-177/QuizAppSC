@@ -1,4 +1,4 @@
-{% extends 'index.html'%}
+{% extends 'index.html' %}
 
 {% block content %}
 <style>
@@ -32,74 +32,49 @@
     .flip-card-back {
       transform: rotateY(180deg);
     }
-  </style>
-<section class="container mx-auto text-center py-20 animate-fadeIn">
-    <h1 class="text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-sky-300 to-cyan-400">
+</style>
+
+<!-- Hero Section -->
+<section class="container mx-auto text-center py-20 animate-fadeIn px-4">
+    <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-sky-300 to-cyan-400">
       Welcome to QuizMaster
     </h1>
-    <p class="text-xl mb-8 text-sky-400/80">Test your knowledge with our interactive quizzes!</p>
-    <a href="signin.html" class="bg-sky-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-sky-700 hover:scale-105 transition-all transform">
+    <p class="text-lg sm:text-xl mb-8 text-sky-400/80">
+      Test your knowledge with our interactive quizzes!
+    </p>
+    <a href="{% url 'signin' %}" class="bg-sky-600 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-lg text-lg font-semibold hover:bg-sky-700 hover:scale-105 transition-all transform">
       Get Started
     </a>
-  </section>
+</section>
 
-  <!-- Quiz Cards Section -->
-  <section class="container mx-auto py-12">
-    <h2 class="text-4xl font-bold text-center mb-12 bg-clip-text text-transparent bg-gradient-to-r from-sky-300 to-cyan-400">
+<!-- Dynamic Quiz Cards Section -->
+<section class="container mx-auto py-12 px-4">
+    <h2 class="text-3xl sm:text-4xl font-bold text-center mb-12 bg-clip-text text-transparent bg-gradient-to-r from-sky-300 to-cyan-400">
       Featured Quizzes
     </h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-      <!-- Quiz Card 1 -->
-      <div class="flip-card group">
-        <div class="flip-card-inner bg-sky-900/20 rounded-lg shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-sky-800/50">
-          <div class="flip-card-front">
-            <h3 class="text-2xl font-bold mb-4 text-sky-300">General Knowledge</h3>
-            <p class="text-sky-400/80">Test your knowledge of the world.</p>
-          </div>
-          <div class="flip-card-back absolute top-0 left-0 w-full h-full p-6">
-            <h3 class="text-2xl font-bold mb-4 text-sky-300">Details</h3>
-            <p class="text-sky-400/80">20 Questions | 10 Minutes</p>
-            <button class="mt-4 bg-sky-600 px-4 py-2 rounded-lg hover:bg-sky-700 hover:scale-105 transition-all transform">
-              Start Quiz
-            </button>
-          </div>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        {% for quiz in quizzes %}
+        <div class="flip-card group">
+            <div class="flip-card-inner bg-sky-900/20 rounded-lg shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-sky-800/50">
+                <!-- Front of Card -->
+                <div class="flip-card-front flex flex-col items-center justify-center text-center p-4 h-full">
+                    <h3 class="text-xl sm:text-2xl font-bold mb-4 text-sky-300">{{ quiz.topic }}</h3>
+                    <p class="text-sky-400/80 text-sm sm:text-base">{{ quiz.description }}</p>
+                </div>
+                <!-- Back of Card -->
+                <div class="flip-card-back absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center p-6 space-y-4">
+                    <h3 class="text-xl sm:text-2xl font-bold text-sky-300">Details</h3>
+                    <p class="text-sky-400/80 text-lg">10 Questions</p>
+                    <a href="{% url 'quiz' quiz.quiz_id %}" class="bg-sky-600 text-white px-4 py-2 rounded-lg text-sm sm:text-base font-semibold hover:bg-sky-700 hover:scale-105 transition-all transform">
+                        Start Quiz
+                    </a>
+                </div>
+            </div>
         </div>
-      </div>
-
-      <!-- Quiz Card 2 -->
-      <div class="flip-card group">
-        <div class="flip-card-inner bg-sky-900/20 rounded-lg shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-sky-800/50">
-          <div class="flip-card-front">
-            <h3 class="text-2xl font-bold mb-4 text-sky-300">Science & Tech</h3>
-            <p class="text-sky-400/80">Explore the world of science and technology.</p>
-          </div>
-          <div class="flip-card-back absolute top-0 left-0 w-full h-full p-6">
-            <h3 class="text-2xl font-bold mb-4 text-sky-300">Details</h3>
-            <p class="text-sky-400/80">15 Questions | 8 Minutes</p>
-            <button class="mt-4 bg-sky-600 px-4 py-2 rounded-lg hover:bg-sky-700 hover:scale-105 transition-all transform">
-              Start Quiz
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quiz Card 3 -->
-      <div class="flip-card group">
-        <div class="flip-card-inner bg-sky-900/20 rounded-lg shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-sky-800/50">
-          <div class="flip-card-front">
-            <h3 class="text-2xl font-bold mb-4 text-sky-300">History</h3>
-            <p class="text-sky-400/80">Dive into the past with historical facts.</p>
-          </div>
-          <div class="flip-card-back absolute top-0 left-0 w-full h-full p-6">
-            <h3 class="text-2xl font-bold mb-4 text-sky-300">Details</h3>
-            <p class="text-sky-400/80">25 Questions | 12 Minutes</p>
-            <button class="mt-4 bg-sky-600 px-4 py-2 rounded-lg hover:bg-sky-700 hover:scale-105 transition-all transform">
-              Start Quiz
-            </button>
-          </div>
-        </div>
-      </div>
+        {% empty %}
+        <p class="text-sky-400/80 text-center col-span-full">No quizzes available yet.</p>
+        {% endfor %}
     </div>
-  </section>
-
-{% endblock %} 
+</section>
+{% endblock %}
