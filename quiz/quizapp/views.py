@@ -150,11 +150,19 @@ def submit_quiz(request, topic_id):
         leaderboard_entry.total_attempted_questions += total_questions
         leaderboard_entry.save()
         
-        return JsonResponse({'message': 'Quiz submitted!', 'score': score, 'total_questions': total_questions, 'total_score': leaderboard_entry.total_score, 'redirect_url': '/quiz-results/'})
+        context = {
+            'score': score,
+            'total_questions': total_questions,
+            'total_score': leaderboard_entry.total_score,
+            'highest_score': leaderboard_entry.highest_score
+        }
+        # Render the result page with the calculated context
+        return render(request, 'result.html', context)
     
-    return JsonResponse({'message': 'Invalid request!'}, status=400)
+    return redirect('dashboard')
 
 
+    return JsonResponse({'error': 'Invalid request!'}, status=400)
 def quiz_view(request, quiz_id):
     quiz = get_object_or_404(Quiz, pk=quiz_id)
     topics = Question.objects.filter(topic=quiz.topic).values_list('topic', flat=True).distinct()
@@ -183,3 +191,10 @@ def calculate_user_score(topic, user, user_answers):
             total_score += 1
         print(user_answers.get(question_id), question.correct_answer)
     return total_score, total_questions
+@login_required
+def result(request):
+    # quiz_result = request.session.get('quiz_result', None)
+    # print("quiz_result",quiz_result)
+    # if not quiz_result:
+    #     return redirect('dashboard')
+    return render(request, 'result.html')

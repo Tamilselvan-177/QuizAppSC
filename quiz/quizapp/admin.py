@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Topic, Question, QuizAttempt, UserResponse, Quiz
+from .models import Topic, Question, QuizAttempt, UserResponse, Quiz, Leaderboard
 # Register your models her
 from django import forms
 
@@ -22,3 +22,4 @@ admin.site.register(Quiz)
 admin.site.register(Topic)
 admin.site.register(QuizAttempt)
 admin.site.register(UserResponse)
+admin.site.register(Leaderboard)
