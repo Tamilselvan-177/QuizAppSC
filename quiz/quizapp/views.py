@@ -119,7 +119,7 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import Quiz, Leaderboard, Topic, Question
 
-@login_required
+@login_required(login_url='signin')
 def dashboard(request):
     quizzes = Quiz.objects.all()
     return render(request, 'dashboard.html', {'quizzes': quizzes})
@@ -129,7 +129,7 @@ def leaderboard(request):
     leaderboard = Leaderboard.objects.select_related('user').order_by('-total_score', '-highest_score')
     return render(request, 'leaderboard.html', {'leaderboard': leaderboard})
 
-@login_required
+@login_required(login_url='signin')
 def submit_quiz(request, topic_id):
     if request.method == 'POST':
         user = request.user
@@ -163,6 +163,7 @@ def submit_quiz(request, topic_id):
 
 
     return JsonResponse({'error': 'Invalid request!'}, status=400)
+@login_required(login_url='signin')
 def quiz_view(request, quiz_id):
     quiz = get_object_or_404(Quiz, pk=quiz_id)
     topics = Question.objects.filter(topic=quiz.topic).values_list('topic', flat=True).distinct()
@@ -179,6 +180,7 @@ def quiz_view(request, quiz_id):
     
     return render(request, 'quiz.html', {'quiz': quiz, 'questions': questions_data})
 
+@login_required(login_url='signin')
 
 def calculate_user_score(topic, user, user_answers):
     total_score = 0
@@ -191,7 +193,7 @@ def calculate_user_score(topic, user, user_answers):
             total_score += 1
         print(user_answers.get(question_id), question.correct_answer)
     return total_score, total_questions
-@login_required
+@login_required(login_url='signin')
 def result(request):
     # quiz_result = request.session.get('quiz_result', None)
     # print("quiz_result",quiz_result)
