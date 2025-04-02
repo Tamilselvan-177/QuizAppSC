@@ -15,5 +15,5 @@ urlpatterns = [
    path('quiz/<int:quiz_id>/', views.quiz_view, name='quiz'),
     path('submit-quiz/<int:topic_id>/', views.submit_quiz, name='submit_quiz'),
 
-
+    path('profile',views.profile,name="profile")
 ]

@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 class Topic(models.Model):
     topic_id = models.AutoField(primary_key=True)
     topic_name = models.CharField(max_length=255, unique=True)
-
+    
     class Meta:
         verbose_name = "Topic"
         verbose_name_plural = "Topics"
@@ -101,3 +101,10 @@ class Leaderboard(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - Total Score = {self.total_score}, Highest Score = {self.highest_score}"
+
+class Profile(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Correct field name
+    photo = models.ImageField(upload_to='profile_images/', default='default.jpg')  # Profile image
+
+    def __str__(self):
+        return self.user.username

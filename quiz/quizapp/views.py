@@ -13,7 +13,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from .forms import CustomUserCreationForm, ForgotPasswordForm, ResetPasswordForms
-from .models import Topic, QuizAttempt, Leaderboard, Question, UserResponse, Quiz
+from .models import Topic, QuizAttempt, Leaderboard, Question, UserResponse, Quiz ,Profile
 
 def signup(request):
     if request.method == 'POST':
@@ -136,13 +136,12 @@ def submit_quiz(request, topic_id):
         topic = get_object_or_404(Topic, pk=topic_id)
         user_answers = {}
         
-        # Extract user answers based on question IDs
         for key, value in request.POST.items():
             if key.startswith("answer_"):
-                question_id = key.split('_')[1]  # Extract question ID
+                question_id = key.split('_')[1]
                 user_answers[question_id] = value
         
-        score, total_questions = calculate_user_score(topic, user, user_answers)
+        score, total_questions = calculate_user_score(topic, user_answers)
         
         leaderboard_entry, _ = Leaderboard.objects.get_or_create(user=user)
         leaderboard_entry.total_score += score
@@ -156,11 +155,22 @@ def submit_quiz(request, topic_id):
             'total_score': leaderboard_entry.total_score,
             'highest_score': leaderboard_entry.highest_score
         }
-        # Render the result page with the calculated context
         return render(request, 'result.html', context)
     
     return redirect('dashboard')
 
+# Remove the @login_required decorator from this helper function
+def calculate_user_score(topic, user_answers):
+    total_score = 0
+    questions = Question.objects.filter(topic=topic)
+    total_questions = questions.count()
+    
+    for question in questions:
+        question_id = str(question.question_id)
+        if user_answers.get(question_id) == question.correct_answer:
+            total_score += 1
+    
+    return total_score, total_questions
 
     return JsonResponse({'error': 'Invalid request!'}, status=400)
 @login_required(login_url='signin')
@@ -181,22 +191,16 @@ def quiz_view(request, quiz_id):
     return render(request, 'quiz.html', {'quiz': quiz, 'questions': questions_data})
 
 @login_required(login_url='signin')
-
-def calculate_user_score(topic, user, user_answers):
-    total_score = 0
-    questions = Question.objects.filter(topic=topic)
-    total_questions = questions.count()
-    
-    for question in questions:
-        question_id = str(question.question_id)  # Convert to string for comparison
-        if user_answers.get(question_id) == question.correct_answer:
-            total_score += 1
-        print(user_answers.get(question_id), question.correct_answer)
-    return total_score, total_questions
-@login_required(login_url='signin')
 def result(request):
     # quiz_result = request.session.get('quiz_result', None)
     # print("quiz_result",quiz_result)
     # if not quiz_result:
     #     return redirect('dashboard')
     return render(request, 'result.html')
+@login_required(login_url='signin')
+def profile(request):
+    email = request.user.email
+    profile = Profile.objects.filter(user=request.user)
+    print(profile)
+    user = request.user
+    return render(request,'profile.html',{'email':email,'username':user})
